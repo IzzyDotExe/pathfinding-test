@@ -5,6 +5,24 @@ from collections import defaultdict
 
 DEBUG = False
 
+# Higer = less walls
+PATHFIND_WALL_DENSITY = 3
+
+GRID_X_LENGTH = 50 
+GRID_Y_LENGTH = 10
+
+ANIMATE_PATHFINDING = True
+ANIM_FRAME_DELAY = 0.05
+
+def flush_input():
+    try:
+        import msvcrt
+        while msvcrt.kbhit():
+            msvcrt.getch()
+    except ImportError:
+        import sys, termios    #for linux/unix
+        termios.tcflush(sys.stdin, termios.TCIOFLUSH)
+
 class Node:
 
     def __init__(self, x, y):
@@ -12,7 +30,9 @@ class Node:
         self.y = y
         self.isExplored = False
         self.isPath = False
-        self.isWalkable = random.randrange(0, 2);
+        self.isWalkable = random.randrange(0, PATHFIND_WALL_DENSITY)
+        self.isStart = False
+        self.isEnd = False
 
     def setWalkable(self, walkable):
         self.isWalkable = walkable
@@ -29,6 +49,12 @@ class Node:
 
         if DEBUG:
 
+            if self.isStart:
+                return f"(S, S)"
+
+            if self.isEnd:
+                return f"(E, E)"
+
             if self.isPath:
                 return f"(O, O)"
 
@@ -42,6 +68,12 @@ class Node:
 
         else:
 
+            if self.isStart:
+                return "⛳"
+
+            if self.isEnd:
+                return "🏁"
+
             if self.isPath:
                 return "🟨"
 
@@ -53,7 +85,6 @@ class Node:
             else:
                 return "⬛️"
                 
-
 class Grid:
     
     def __init__(self, dimensionsX, dimensionsY):
@@ -114,6 +145,8 @@ class Grid:
 
             if newnode.isWalkable:
                 adjacentNodes.append(newnode)
+
+        # random.shuffle(adjacentNodes)
 
         return adjacentNodes
 
@@ -208,31 +241,104 @@ def coolGrid():
     playspace.PLAYSPACE_GRID_LAYOUT[4][0].setWalkable(0)
 """
 
-playspace = Grid(10, 10)
+playspace = Grid(GRID_X_LENGTH, GRID_Y_LENGTH)
 
 # coolGrid()
 
 def printPlayspace():
 
-    for x in range(playspace.Yrange):
+    for y in range(playspace.Yrange):
 
         print("", end="")
 
-        for y in range(playspace.Yrange):
+        for x in range(playspace.Xrange):
 
-            print(playspace.PLAYSPACE_GRID_LAYOUT[x][y], end="")
+            print(playspace.PLAYSPACE_GRID_LAYOUT[y][x], end="")
         
         print("")
 
-printPlayspace()
+# printPlayspace()
 
-print("Please enter your x y coords for the start point: ")
-startx = int(input("Enter X coord: "))
-starty = int(input("Enter Y coord: "))
+sPick = False
+while not sPick:
+    flush_input()
 
-print("Please enter your x y coords for the end point: ")
-endx = int(input("Enter X coord: "))
-endy = int(input("Enter Y coord: "))
+    printPlayspace()
+
+    print("Please enter your x y coords for the start point: ")
+    startx = int(input("Enter X coord: "))
+    starty = int(input("Enter Y coord: "))
+
+    startpoint = playspace.getNode(startx, starty)
+
+    if not startpoint.isWalkable:
+        os.system('cls' if os.name == 'nt' else 'clear')  
+        print("Choose another spot! that spot is blocked off.")
+
+        continue
+
+    if not playspace.adjacentNodes(startpoint):
+        os.system('cls' if os.name == 'nt' else 'clear')   
+        print("Start point has nowhere to pathfind to, please choose a different space.") 
+
+        continue
+
+    startpoint.isStart = True
+
+    os.system('cls' if os.name == 'nt' else 'clear')    
+    printPlayspace()
+    satisfied = str(input("Are you satisfied with this start location? (Y, N) "))
+
+    if satisfied.lower()[0] == "y":
+
+        sPick = True
+        os.system('cls' if os.name == 'nt' else 'clear')    
+    
+    else: 
+
+        startpoint.isStart = False
+        os.system('cls' if os.name == 'nt' else 'clear')    
+
+ePick = False
+while not ePick:
+    flush_input()
+
+    printPlayspace()
+
+    print("Please enter your x y coords for the end point: ")
+    endx = int(input("Enter X coord: "))
+    endy = int(input("Enter Y coord: "))
+
+    endpoint = playspace.getNode(endx, endy)
+
+    if not endpoint.isWalkable:
+        os.system('cls' if os.name == 'nt' else 'clear')  
+        print("Choose another spot! that spot is blocked off.")
+
+        continue
+
+    if not playspace.adjacentNodes(endpoint):
+        os.system('cls' if os.name == 'nt' else 'clear')   
+        print("Start point has nowhere to pathfind to, please choose a different space.") 
+
+        continue
+
+    endpoint.isEnd = True
+
+    os.system('cls' if os.name == 'nt' else 'clear')    
+    printPlayspace()
+    satisfied = str(input("Are you satisfied with this end location? (Y, N) "))
+
+    if satisfied.lower()[0] == "y":
+
+        ePick = True
+        os.system('cls' if os.name == 'nt' else 'clear')    
+    
+    else: 
+
+        endpoint.isEnd = False
+        os.system('cls' if os.name == 'nt' else 'clear')    
+
 
 def pathfind(grid: Grid, root: Node, goal: Node):
 
@@ -243,9 +349,11 @@ def pathfind(grid: Grid, root: Node, goal: Node):
     queue.insert(root)
 
     while (queue.head is not None):
-        os.system('cls' if os.name == 'nt' else 'clear')    
-        printPlayspace()
-        time.sleep(0.1)
+
+        if ANIMATE_PATHFINDING:
+            os.system('cls' if os.name == 'nt' else 'clear')    
+            printPlayspace()
+            time.sleep(ANIM_FRAME_DELAY)
 
         focus = queue.pop()
 
@@ -261,13 +369,22 @@ def pathfind(grid: Grid, root: Node, goal: Node):
 
     return explored
 
-pathfinded = pathfind(playspace, playspace.getNode(startx, starty), playspace.getNode(endx, endy))
+
+endpoint = playspace.getNode(endx, endy)
+
+endpoint.isEnd = True
+pathfinded = pathfind(playspace, startpoint, endpoint)
 
 path = []
 discoveryStart = playspace.getNode(endx, endy)
 
 while playspace.getNode(startx, starty) not in path:
-    discoveryStart.isPath = True
+    try:
+        discoveryStart.isPath = True
+    except AttributeError:
+        print("COULD NOT PATHFIND TO SPECIFIED LOCATION")
+        exit()
+
     path.append(discoveryStart)
     discoveryStart = pathfinded[discoveryStart]['last_pos']
 
