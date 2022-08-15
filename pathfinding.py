@@ -1,15 +1,18 @@
-import sys, pygame
+import sys, os
 import random
+import time
 from collections import defaultdict
+
+DEBUG = False
 
 class Node:
 
-    def __init__(self, walkable, x, y):
+    def __init__(self, x, y):
         self.x = x
         self.y = y
         self.isExplored = False
-        # self.isWalkable = walkable
-        self.isWalkable = 1
+        self.isPath = False
+        self.isWalkable = random.randrange(0, 2);
 
     def setWalkable(self, walkable):
         self.isWalkable = walkable
@@ -24,10 +27,32 @@ class Node:
 
     def __repr__(self):
 
-        if self.isWalkable:
-            return f"({self.x}, {self.y})"
+        if DEBUG:
+
+            if self.isPath:
+                return f"(O, O)"
+
+            if self.isExplored:
+                return f"(X, X)"
+
+            if self.isWalkable:
+                return f"({self.x}, {self.y})"
+            else:
+                return f"[{self.x}, {self.y}]"
+
         else:
-            return f"[{self.x}, {self.y}]"
+
+            if self.isPath:
+                return "🟨"
+
+            if self.isExplored:
+                return "🟦"
+
+            if self.isWalkable:
+                return "⬜️"
+            else:
+                return "⬛️"
+                
 
 class Grid:
     
@@ -48,7 +73,7 @@ class Grid:
 
             for x in range(self.Xrange):
 
-                dataRow.append(Node(True, x, y))
+                dataRow.append(Node(x, y))
 
             self.PLAYSPACE_GRID_LAYOUT.append(dataRow)
     
@@ -167,6 +192,8 @@ class LinkedListNode:
         self.nextValue = None
         self.data = data
 
+
+"""
 def coolGrid():
 
     playspace.PLAYSPACE_GRID_LAYOUT[1][3].setWalkable(0)
@@ -179,20 +206,25 @@ def coolGrid():
     playspace.PLAYSPACE_GRID_LAYOUT[1][0].setWalkable(0)
     playspace.PLAYSPACE_GRID_LAYOUT[2][0].setWalkable(0)
     playspace.PLAYSPACE_GRID_LAYOUT[4][0].setWalkable(0)
+"""
 
-playspace = Grid(5, 5)
+playspace = Grid(10, 10)
 
-coolGrid()
+# coolGrid()
 
-for x in range(playspace.Yrange):
+def printPlayspace():
 
-    print("[ ", end="")
+    for x in range(playspace.Yrange):
 
-    for y in range(playspace.Yrange):
+        print("", end="")
 
-        print(playspace.PLAYSPACE_GRID_LAYOUT[x][y], end=" ")
-    
-    print("]")
+        for y in range(playspace.Yrange):
+
+            print(playspace.PLAYSPACE_GRID_LAYOUT[x][y], end="")
+        
+        print("")
+
+printPlayspace()
 
 print("Please enter your x y coords for the start point: ")
 startx = int(input("Enter X coord: "))
@@ -207,9 +239,13 @@ def pathfind(grid: Grid, root: Node, goal: Node):
     queue = LinkedList()
     explored = defaultdict(lambda: {"last_pos": None, "explored" : False})
     explored[root]["explored"] = True
+    root.isExplored = True
     queue.insert(root)
 
     while (queue.head is not None):
+        os.system('cls' if os.name == 'nt' else 'clear')    
+        printPlayspace()
+        time.sleep(0.1)
 
         focus = queue.pop()
 
@@ -220,6 +256,7 @@ def pathfind(grid: Grid, root: Node, goal: Node):
             if not explored[node]["explored"]:
                 explored[node]["explored"] = True
                 explored[node]["last_pos"] = focus
+                node.isExplored = True
                 queue.insert(node)
 
     return explored
@@ -230,8 +267,11 @@ path = []
 discoveryStart = playspace.getNode(endx, endy)
 
 while playspace.getNode(startx, starty) not in path:
+    discoveryStart.isPath = True
     path.append(discoveryStart)
     discoveryStart = pathfinded[discoveryStart]['last_pos']
 
 path.reverse()
-print(path)
+
+os.system('cls' if os.name == 'nt' else 'clear')    
+printPlayspace()
