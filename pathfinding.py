@@ -321,6 +321,26 @@ def bfsTracePath():
     path.reverse()
     return path
 
+def getLowestFscore(nodes, explored):
+    lowestF = nodes[0]
+
+    for node in nodes:
+        if explored[node]["fscore"] < explored[lowestF]["fscore"]:
+            lowestF = node
+
+    lowestFs = []
+    lowestFs.append(lowestF)
+
+    for node in nodes:
+        if explored[node]["fscore"] == explored[lowestF]["fscore"] and not node.equals(lowestF):
+            lowestFs.append(node)
+    
+    if len(lowestFs) > 1:
+        for node in lowestFs:
+            if explored[node]["hscore"] < explored[lowestF]["hscore"]:
+                lowestF = node
+    return lowestF
+
 def astarPathFind(grid: Grid, root: Node, goal: Node):
     
     queue = LinkedList()
@@ -341,26 +361,10 @@ def astarPathFind(grid: Grid, root: Node, goal: Node):
             time.sleep(ANIM_FRAME_DELAY)
         
         nodes = queue.toList()
-        lowestF = nodes[0]
-
-        for node in nodes:
-            if explored[node]["fscore"] < explored[lowestF]["fscore"]:
-                lowestF = node
-
-        lowestFs = []
-        lowestFs.append(lowestF)
-
-        for node in nodes:
-            if explored[node]["fscore"] == explored[lowestF]["fscore"] and not node.equals(lowestF):
-                lowestFs.append(node)
         
-        if len(lowestFs) > 1:
-            for node in lowestFs:
-                if explored[node]["hscore"] < explored[lowestF]["hscore"]:
-                    lowestF = node
-        
-        current = lowestF
-        queue.remove(lowestF)
+        current = getLowestFscore(nodes, explored)
+
+        queue.remove(current)
 
         if current.equals(goal):
             return explored
@@ -380,11 +384,11 @@ def astarPathFind(grid: Grid, root: Node, goal: Node):
                 explored[node]["explored"] = True
 
                 node.isExplored = True
-
+                
                 queue.insert(node)
+            
+                
 
-                if current.equals(goal):
-                    return explored
     return explored
 
 def astarTracePath():
@@ -495,8 +499,6 @@ while not ePick:
 
         endpoint.isEnd = False
         os.system('cls' if os.name == 'nt' else 'clear')    
-
-
 
 # bfsPathfind(playspace, startpoint, endpoint)
 # bfsTracePath()
