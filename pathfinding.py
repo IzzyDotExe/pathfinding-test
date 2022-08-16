@@ -7,14 +7,17 @@ from collections import defaultdict
 DEBUG = False
 
 # Higer = less walls
-PATHFIND_WALL_DENSITY = 5
+PATHFIND_WALL_DENSITY = 10
 
 GRID_X_LENGTH = 50 
 GRID_Y_LENGTH = 10
 
+# Delay between performing different algorithms
+ALGO_DELAY = 0
+
 # Slows down the algorithm with more delay.
 # Below 0.01 sometimes breaks things
-ANIMATE_PATHFINDING = True
+ANIMATE_PATHFINDING = False
 ANIM_FRAME_DELAY = 0.01
 
 def flush_input():
@@ -159,6 +162,18 @@ class Grid:
     def calcDistance(self, start: Node, target: Node):
         return math.sqrt(pow(float(start.x) - float(target.x), 2) + pow(float(start.y) - float(target.y), 2))
     
+    def toList(self):
+
+        list = []
+
+        for y in range(self.Yrange):
+
+            for x in range(self.Xrange):
+                
+                list.append(self.PLAYSPACE_GRID_LAYOUT[y][x])
+        
+        return list
+
 class LinkedList:
     
     def __init__(self):
@@ -392,6 +407,15 @@ def astarTracePath():
     path.reverse()
     return path     
 
+def clearPathfindingData():
+    for node in playspace.toList():
+        node : Node = node
+        if node.isExplored:
+            node.isExplored = False
+        
+        if node.isPath:
+            node.isPath = False
+
 sPick = False
 while not sPick:
     flush_input()
@@ -472,11 +496,24 @@ while not ePick:
         endpoint.isEnd = False
         os.system('cls' if os.name == 'nt' else 'clear')    
 
+
+
 # bfsPathfind(playspace, startpoint, endpoint)
 # bfsTracePath()
 astarTracePath()
 
-os.system('cls' if os.name == 'nt' else 'clear')    
+os.system('cls' if os.name == 'nt' else 'clear')
+print("A* PATHFINDING")
 printPlayspace()
+
+time.sleep(ALGO_DELAY)
+
+clearPathfindingData()
+
+bfsTracePath()
+
+print("BFS PATHFINDING")
+printPlayspace()
+
 
 # print(playspace.calcDistance(startpoint, endpoint))
