@@ -1,18 +1,21 @@
 import sys, os
 import random
+import math
 import time
 from collections import defaultdict
 
 DEBUG = False
 
 # Higer = less walls
-PATHFIND_WALL_DENSITY = 3
+PATHFIND_WALL_DENSITY = 5
 
 GRID_X_LENGTH = 50 
 GRID_Y_LENGTH = 10
 
+# Slows down the algorithm with more delay.
+# Below 0.01 sometimes breaks things
 ANIMATE_PATHFINDING = True
-ANIM_FRAME_DELAY = 0.05
+ANIM_FRAME_DELAY = 0.01
 
 def flush_input():
     try:
@@ -152,7 +155,10 @@ class Grid:
 
     def getNode(self, x, y):
         return self.PLAYSPACE_GRID_LAYOUT[y][x]
-
+    
+    def calcDistance(self, start: Node, target: Node):
+        return math.sqrt(pow(float(start.x) - float(target.x), 2) + pow(float(start.y) - float(target.y), 2))
+    
 class LinkedList:
     
     def __init__(self):
@@ -219,31 +225,22 @@ class LinkedList:
             print(printval.data)
             printval = printval.nextValue
 
+    def toList(self):
+        list = []
+        val = self.head
+        while val is not None:
+            list.append(val.data)
+            val = val.nextValue
+        
+        return list
+
 class LinkedListNode:
     
     def __init__(self, data):
         self.nextValue = None
         self.data = data
 
-
-"""
-def coolGrid():
-
-    playspace.PLAYSPACE_GRID_LAYOUT[1][3].setWalkable(0)
-    playspace.PLAYSPACE_GRID_LAYOUT[1][4].setWalkable(0)
-    playspace.PLAYSPACE_GRID_LAYOUT[2][4].setWalkable(0)
-    playspace.PLAYSPACE_GRID_LAYOUT[0][1].setWalkable(0)
-    playspace.PLAYSPACE_GRID_LAYOUT[1][1].setWalkable(0)
-    playspace.PLAYSPACE_GRID_LAYOUT[2][1].setWalkable(0)
-    playspace.PLAYSPACE_GRID_LAYOUT[3][1].setWalkable(0)
-    playspace.PLAYSPACE_GRID_LAYOUT[1][0].setWalkable(0)
-    playspace.PLAYSPACE_GRID_LAYOUT[2][0].setWalkable(0)
-    playspace.PLAYSPACE_GRID_LAYOUT[4][0].setWalkable(0)
-"""
-
 playspace = Grid(GRID_X_LENGTH, GRID_Y_LENGTH)
-
-# coolGrid()
 
 def printPlayspace():
 
@@ -257,7 +254,143 @@ def printPlayspace():
         
         print("")
 
-# printPlayspace()
+def bfsPathfind(grid: Grid, root: Node, goal: Node):
+
+    queue = LinkedList()
+    explored = defaultdict(lambda: {"last_pos": None, "explored" : False})
+    explored[root]["explored"] = True
+    root.isExplored = True
+    queue.insert(root)
+
+    while (queue.head is not None):
+
+        if ANIMATE_PATHFINDING:
+            os.system('cls' if os.name == 'nt' else 'clear')    
+            printPlayspace()
+            time.sleep(ANIM_FRAME_DELAY)
+
+        focus = queue.pop()
+
+        if focus.equals(goal):
+            return explored
+        
+        for node in grid.adjacentNodes(focus):
+
+            if not explored[node]["explored"]:
+                explored[node]["explored"] = True
+                explored[node]["last_pos"] = focus
+                node.isExplored = True
+                queue.insert(node)
+
+                if node.equals(goal):
+                    return explored
+
+    return explored
+
+def bfsTracePath():
+    pathfinded = bfsPathfind(playspace, startpoint, endpoint)
+
+    path = []
+    discoveryStart = playspace.getNode(endx, endy)
+
+    while playspace.getNode(startx, starty) not in path:
+        try:
+            discoveryStart.isPath = True
+        except AttributeError:
+            print("COULD NOT PATHFIND TO SPECIFIED LOCATION")
+            exit()
+
+        path.append(discoveryStart)
+        discoveryStart = pathfinded[discoveryStart]['last_pos']
+
+    path.reverse()
+    return path
+
+def astarPathFind(grid: Grid, root: Node, goal: Node):
+    
+    queue = LinkedList()
+
+    explored = defaultdict(lambda: {"last_pos": None, "explored" : False, "gscore": math.inf, "hscore": math.inf, "fscore": math.inf})
+    root.isExplored = True
+    explored[root]["gscore"] = 0
+    explored[root]["hscore"] = grid.calcDistance(root, goal)
+    explored[root]["fscore"] = explored[root]["gscore"] + explored[root]["hscore"]
+
+    queue.insert(root)
+
+    while (queue.head is not None):
+
+        if ANIMATE_PATHFINDING:
+            os.system('cls' if os.name == 'nt' else 'clear')    
+            printPlayspace()
+            time.sleep(ANIM_FRAME_DELAY)
+        
+        nodes = queue.toList()
+        lowestF = nodes[0]
+
+        for node in nodes:
+            if explored[node]["fscore"] < explored[lowestF]["fscore"]:
+                lowestF = node
+
+        lowestFs = []
+        lowestFs.append(lowestF)
+
+        for node in nodes:
+            if explored[node]["fscore"] == explored[lowestF]["fscore"] and not node.equals(lowestF):
+                lowestFs.append(node)
+        
+        if len(lowestFs) > 1:
+            for node in lowestFs:
+                if explored[node]["hscore"] < explored[lowestF]["hscore"]:
+                    lowestF = node
+        
+        current = lowestF
+        queue.remove(lowestF)
+
+        if current.equals(goal):
+            return explored
+        
+        for node in grid.adjacentNodes(current):
+
+            if not explored[node]["explored"]:
+
+                gscore = explored[current]["gscore"] + grid.calcDistance(node, current)
+                hscore = grid.calcDistance(node, goal)
+                fscore = gscore + hscore
+
+                explored[node]["last_pos"] = current
+                explored[node]["gscore"] = gscore
+                explored[node]["hscore"] = hscore
+                explored[node]["fscore"] = fscore
+                explored[node]["explored"] = True
+
+                node.isExplored = True
+
+                queue.insert(node)
+
+                if current.equals(goal):
+                    return explored
+    return explored
+
+def astarTracePath():
+    
+    pathfinded = astarPathFind(playspace, startpoint, endpoint)
+
+    path = []
+
+    discoveryStart = playspace.getNode(endx, endy)
+
+    while playspace.getNode(startx, starty) not in path:
+        try:
+            discoveryStart.isPath = True
+        except AttributeError:
+            print("COULD NOT PATHFIND TO SPECIFIED LOCATION")
+            exit()
+        path.append(discoveryStart)
+        discoveryStart = pathfinded[discoveryStart]["last_pos"]
+    
+    path.reverse()
+    return path     
 
 sPick = False
 while not sPick:
@@ -339,56 +472,11 @@ while not ePick:
         endpoint.isEnd = False
         os.system('cls' if os.name == 'nt' else 'clear')    
 
-
-def pathfind(grid: Grid, root: Node, goal: Node):
-
-    queue = LinkedList()
-    explored = defaultdict(lambda: {"last_pos": None, "explored" : False})
-    explored[root]["explored"] = True
-    root.isExplored = True
-    queue.insert(root)
-
-    while (queue.head is not None):
-
-        if ANIMATE_PATHFINDING:
-            os.system('cls' if os.name == 'nt' else 'clear')    
-            printPlayspace()
-            time.sleep(ANIM_FRAME_DELAY)
-
-        focus = queue.pop()
-
-        if focus.equals(goal):
-            return explored
-        
-        for node in grid.adjacentNodes(focus):
-            if not explored[node]["explored"]:
-                explored[node]["explored"] = True
-                explored[node]["last_pos"] = focus
-                node.isExplored = True
-                queue.insert(node)
-
-    return explored
-
-
-endpoint = playspace.getNode(endx, endy)
-
-endpoint.isEnd = True
-pathfinded = pathfind(playspace, startpoint, endpoint)
-
-path = []
-discoveryStart = playspace.getNode(endx, endy)
-
-while playspace.getNode(startx, starty) not in path:
-    try:
-        discoveryStart.isPath = True
-    except AttributeError:
-        print("COULD NOT PATHFIND TO SPECIFIED LOCATION")
-        exit()
-
-    path.append(discoveryStart)
-    discoveryStart = pathfinded[discoveryStart]['last_pos']
-
-path.reverse()
+# bfsPathfind(playspace, startpoint, endpoint)
+# bfsTracePath()
+astarTracePath()
 
 os.system('cls' if os.name == 'nt' else 'clear')    
 printPlayspace()
+
+# print(playspace.calcDistance(startpoint, endpoint))
